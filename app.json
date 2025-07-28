@@ -1,0 +1,100 @@
+{
+  "expo": {
+    "name": "TNHappyKids",
+    "slug": "tnhappykids-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tnhappykids.app",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to take photos for attendance and profile pictures.",
+        "NSPhotoLibraryUsageDescription": "Allow TNHappyKids to access your media library.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone for video recording features.",
+        "NSLocationWhenInUseUsageDescription": "This app uses location to track attendance and provide location-based services.",
+        "NSFaceIDUsageDescription": "Allow TNHappyKids to use Face ID for secure login.",
+        "NSPhotoLibraryAddUsageDescription": "Allow TNHappyKids to save photos to your media library."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.tnhappykids.app",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.ACCESS_MEDIA_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow TNHappyKids to access your camera to take photos for attendance and profile pictures."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow TNHappyKids to access your photo library to select images for profile pictures and activities."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow TNHappyKids to use Face ID for secure login."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow TNHappyKids to access your media library.",
+          "savePhotosPermission": "Allow TNHappyKids to save photos to your media library.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ]
+    ],
+    "owner": "dineshwebdev",
+    "updates": {
+      "enabled": true,
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a63258c1-9b4d-4615-ba0c-b3d2355112bd"
+      }
+    }
+  }
+}
