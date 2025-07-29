@@ -17,26 +17,36 @@ export default function PostLoginSplashScreen() {
       }
       
       const timer = setTimeout(() => {
-        switch ((role || '').toLowerCase()) {
+        console.log('Navigating with role:', role);
+        const roleLower = (role || '').toLowerCase();
+        console.log('Processing role:', roleLower);
+        switch (roleLower) {
           case 'administration':
+            console.log('Navigating to AdministrationDashboard');
             navigation.replace('AdministrationDashboard');
             break;
           case 'franchisee':
+            console.log('Navigating to FranchiseeDashboard');
             navigation.replace('FranchiseeDashboard');
             break;
           case 'teacher':
+            console.log('Navigating to TeacherDashboard');
             navigation.replace('TeacherDashboard');
             break;
           case 'tuition_teacher':
+            console.log('Navigating to TuitionTeacherDashboard');
             navigation.replace('TuitionTeacherDashboard');
             break;
           case 'parent':
+            console.log('Navigating to ParentDashboard');
             navigation.replace('ParentDashboard');
             break;
           case 'tuition_student':
+            console.log('Navigating to TuitionStudentDashboard');
             navigation.replace('TuitionStudentDashboard');
             break;
           default:
+            console.log('Unknown role, navigating to Login');
             navigation.replace('Login');
         }
       }, 2000); // 2 seconds splash

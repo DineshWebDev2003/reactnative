@@ -2,26 +2,75 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Image, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
 export default function AnimatedSplashScreen() {
   const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const hasNavigated = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple navigation attempts
+    if (hasNavigated.current) {
+      console.log('AnimatedSplashScreen: Already navigated, skipping...');
+      return;
+    }
+    
     console.log('AnimatedSplashScreen: Starting animation...');
-    Animated.timing(fadeAnim, {
-        toValue: 1,
-      duration: 1200,
-        useNativeDriver: true,
-    }).start(() => {
-      console.log('AnimatedSplashScreen: Animation completed, navigating to Login...');
-      // Navigate to Login screen after animation completes
-      setTimeout(() => {
-        navigation.replace('Login');
-      }, 1800);
-    });
+    
+    const checkAuthAndNavigate = async () => {
+      try {
+        const userId = await AsyncStorage.getItem('userId');
+        const userToken = await AsyncStorage.getItem('userToken');
+        const role = await AsyncStorage.getItem('role');
+        
+        console.log('AnimatedSplashScreen: Auth check - userId:', userId, 'userToken:', userToken, 'role:', role);
+        
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }).start(() => {
+          console.log('AnimatedSplashScreen: Animation completed');
+          
+          setTimeout(() => {
+            if (hasNavigated.current) {
+              console.log('AnimatedSplashScreen: Navigation already happened, skipping...');
+              return;
+            }
+            
+            hasNavigated.current = true;
+            
+            if (userId && userToken) {
+              console.log('AnimatedSplashScreen: User is authenticated, navigating to PostLoginSplash');
+              navigation.replace('PostLoginSplash', { role: role || 'administration' });
+            } else {
+              console.log('AnimatedSplashScreen: User not authenticated, navigating to Login');
+              navigation.replace('Login');
+            }
+          }, 1800);
+        });
+      } catch (error) {
+        console.error('AnimatedSplashScreen: Auth check error:', error);
+        // Fallback to Login on error
+        if (!hasNavigated.current) {
+          hasNavigated.current = true;
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: true,
+          }).start(() => {
+            setTimeout(() => {
+              navigation.replace('Login');
+            }, 1800);
+          });
+        }
+      }
+    };
+    
+    checkAuthAndNavigate();
   }, [navigation]);
 
   // Simple emoji icons instead of vector icons

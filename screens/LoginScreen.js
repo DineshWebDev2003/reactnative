@@ -94,6 +94,7 @@ export default function LoginScreen() {
               break;
             default: dashboard = 'AdministrationDashboard'; break;
           }
+          console.log('Login successful, navigating to PostLoginSplash with role:', data.user.role.toLowerCase());
           navigation.replace('PostLoginSplash', { role: data.user.role.toLowerCase() });
           await AsyncStorage.setItem('userToken', 'true');
         } else {

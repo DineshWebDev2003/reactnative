@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { MaterialIcons, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+
 
 // Import all screens
 import AnimatedSplashScreen from './screens/AnimatedSplashScreen';
@@ -85,6 +86,23 @@ class ErrorBoundary extends React.Component {
 
 // Main App Component
 export default function App() {
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  useEffect(() => {
+    // For Expo SDK 50, vector icons should work without explicit font loading
+    setFontsLoaded(true);
+  }, []);
+
+  if (!fontsLoaded) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>
@@ -154,6 +172,16 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#333',
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',

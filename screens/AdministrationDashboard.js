@@ -8,6 +8,7 @@ import { MaterialIcons, FontAwesome5, Ionicons, Entypo, Feather } from '@expo/ve
 import { BASE_URL } from '../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { handleLogout } from '../utils/logout';
+import SafeIcon from '../components/SafeIcon';
 import { LineChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -49,6 +50,82 @@ const cameraBranches = [
 export default function AdministrationDashboard() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  
+  // Add error boundary state
+  const [hasError, setHasError] = useState(false);
+  
+  // Error boundary effect
+  useEffect(() => {
+    // React Native doesn't have window.addEventListener, so we'll handle errors differently
+    console.log('AdministrationDashboard mounted');
+    
+    // Check authentication with a small delay to ensure AsyncStorage is ready
+    const checkAuth = async () => {
+      try {
+        // Add a small delay to ensure AsyncStorage is properly set
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const userId = await AsyncStorage.getItem('userId');
+        const role = await AsyncStorage.getItem('role');
+        const userToken = await AsyncStorage.getItem('userToken');
+        console.log('Auth check - userId:', userId, 'role:', role, 'userToken:', userToken);
+        
+        if (!userId || !userToken) {
+          console.log('No authentication found, redirecting to login');
+          navigation.replace('Login');
+        } else {
+          console.log('Authentication successful, staying on dashboard');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+      }
+    };
+    
+    checkAuth();
+  }, [navigation]);
+
+  // Monitor for any navigation focus changes
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('AdministrationDashboard focused');
+    });
+
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      console.log('AdministrationDashboard blurred');
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeBlur();
+    };
+  }, [navigation]);
+  
+    if (hasError) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7fa' }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <Text style={{ fontSize: 18, color: '#333', textAlign: 'center', marginBottom: 20 }}>
+            Something went wrong with the dashboard. Please try again.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#007AFF', padding: 15, borderRadius: 8 }}
+            onPress={() => setHasError(false)}
+          >
+            <Text style={{ color: '#fff', fontSize: 16 }}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Add try-catch wrapper for the entire render
+  try {
+    console.log('Rendering AdministrationDashboard...');
+  } catch (error) {
+    console.error('Render error in AdministrationDashboard:', error);
+    setHasError(true);
+    return null;
+  }
   // Administration profile info
   const administrationProfile = {
     name: 'TN Happy Kids Administration',
@@ -181,7 +258,12 @@ export default function AdministrationDashboard() {
   const fetchBranches = () => {
     setLoadingBranches(true);
     fetch(`${BASE_URL}/get_branches.php`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
         console.log('Branches response:', data); // Debug log
         if (data.success) setBranches(data.branches);
@@ -189,13 +271,19 @@ export default function AdministrationDashboard() {
       })
       .catch((err) => {
         console.log('Branches fetch error:', err); // Debug log
+        setBranches([]); // Set empty array on error
         setLoadingBranches(false);
       });
   };
   const fetchUsers = () => {
     setLoadingUsers(true);
     fetch(`${BASE_URL}/get_users.php`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
       .then(data => {
         if (data.success) {
           setUsers(data.users);
@@ -218,24 +306,34 @@ export default function AdministrationDashboard() {
   };
 
   useEffect(() => {
-    fetchBranches();
-    fetchUsers();
-    fetch(`${BASE_URL}/get_total_income.php`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) setTotalIncome(data.total_income || 0);
-      });
-    // Fetch trend for the first branch by default
-    if (branches.length > 0) {
-      setSelectedTrendBranch(branches[0].name);
-      fetchTrendData(branches[0].name);
-    }
-    fetchLiveAlerts();
-    fetchTimetables();
+    console.log('Starting initialization...');
+    const initializeData = async () => {
+      try {
+        console.log('Initializing data...');
+        // Temporarily disable API calls to test if they're causing the issue
+        // fetchBranches();
+        // fetchUsers();
+        
+        // const response = await fetch(`${BASE_URL}/get_total_income.php`);
+        // if (response.ok) {
+        //   const data = await response.json();
+        //   if (data.success) setTotalIncome(data.total_income || 0);
+        // }
+        console.log('Initialization completed successfully');
+      } catch (error) {
+        console.error('Initialization error:', error);
+        // Continue with default values
+      }
+    };
+    
+    initializeData();
+    // Temporarily disable these calls
+    // fetchLiveAlerts();
+    // fetchTimetables();
 
     // Set up a timer to refresh alerts every 30 seconds
-    const alertInterval = setInterval(fetchLiveAlerts, 30000);
-    return () => clearInterval(alertInterval);
+    // const alertInterval = setInterval(fetchLiveAlerts, 30000);
+    // return () => clearInterval(alertInterval);
   }, []);
 
   useEffect(() => {
@@ -655,13 +753,13 @@ export default function AdministrationDashboard() {
   const quickActions = [
     {
       gradientColors: ['#43cea2', '#185a9d'],
-      icon: <MaterialIcons name="location-on" color="#fff" />,
+      icon: <SafeIcon type="MaterialIcons" name="location-on" size={22} color="#fff" />,
       label: 'Manage Branches',
       onPress: handleShowBranchCrud,
     },
     {
       gradientColors: ['#f7971e', '#ffd200'],
-      icon: <FontAwesome5 name="user-plus" color="#fff" />,
+      icon: <SafeIcon type="FontAwesome5" name="user-plus" size={22} color="#fff" />,
       label: 'Create/Assign Users',
       onPress: () => navigation.navigate('AssignUser'),
     },
@@ -675,13 +773,13 @@ export default function AdministrationDashboard() {
       gradientColors: ['#00c6ff', '#0072ff'],
       icon: <Ionicons name="chatbubble-ellipses-outline" color="#fff" />,
       label: 'Chat with Franchisees',
-      onPress: () => navigation.navigate('ChatListScreen', { role: 'Franchisee' }),
+      onPress: () => navigation.navigate('ChatList', { role: 'Franchisee' }),
     },
     {
       gradientColors: ['#a6c1ee', '#fbc2eb'],
       icon: <Entypo name="video" color="#fff" />,
       label: 'View All Cameras',
-      onPress: () => navigation.navigate('AllCamerasScreen'),
+      onPress: () => navigation.navigate('AllCameras'),
     },
     {
       gradientColors: ['#b2dfdb', '#4caf50'],
@@ -1025,820 +1123,20 @@ export default function AdministrationDashboard() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f7fa' }}>
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 32, flexGrow: 1 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {successMessage ? (
-          <View style={{ backgroundColor: successColor, padding: 10, borderRadius: 8, marginBottom: 10 }}>
-            <Text style={{ color: '#fff', textAlign: 'center', fontWeight: 'bold' }}>{successMessage}</Text>
-          </View>
-        ) : null}
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          <Image source={administrationProfile.profilePic} style={styles.profilePic} />
-          <View style={styles.profileTextContainer}>
-            <Text style={styles.profileName}>{administrationProfile.name}</Text>
-            <Text style={styles.profileRole}>{administrationProfile.role}</Text>
-            <Text style={styles.profileLocation}>{administrationProfile.location}</Text>
-          </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={() => handleLogout(navigation)}>
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
-        </View>
-        {/* Top Section: Overall Income full-width, other three in a row below */}
-        <SummaryCard
-          gradientColors={['#00c6ff', '#0072ff']}
-          icon={<MaterialIcons name="currency-rupee" size={28} color="#fff" />}
-          label={<Text style={{color:'#fff', fontWeight:'bold', fontSize:15}}>This Month's Income</Text>}
-          value={loadingMonthlyIncome ? 'Loading...' : `₹${monthlyIncome}`}
-          style={{marginBottom: 16, width: '100%'}}
-        />
-        <View style={{flexDirection:'row', justifyContent:'space-between', marginBottom: 16}}>
-          <SummaryCard
-            gradientColors={['#43cea2', '#185a9d']}
-            icon={<MaterialIcons name="location-city" size={28} color="#fff" />}
-            label="Total Branches"
-            value={totalBranches}
-            style={{flex: 1, margin: 6}}
-          />
-          <SummaryCard
-            gradientColors={['#f7971e', '#ffd200']}
-            icon={<FontAwesome5 name="user-graduate" size={28} color="#fff" />}
-            label="Total Students"
-            value={totalStudents}
-            style={{flex: 1, margin: 6}}
-          />
-          <SummaryCard
-            gradientColors={['#f953c6', '#b91d73']}
-            icon={<FontAwesome5 name="users" size={28} color="#fff" />}
-            label="Total Franchisees"
-            value={totalFranchisees}
-            style={{flex: 1, margin: 6}}
-          />
-        </View>
-        {/* Quick Tabs */}
-          {/* --- Quick Actions Section --- */}
-          <View style={{marginVertical: 18, alignItems: 'center', width: '100%'}}>
-            <View style={{flexDirection:'row', alignItems:'center', marginBottom: 12}}>
-              <MaterialIcons name="apps" size={22} color="#a084ca" style={{marginRight: 8}} />
-              <Text style={{fontWeight:'bold', fontSize: 18, color:'#1a237e', letterSpacing:0.5}}>Quick Actions</Text>
-            </View>
-            {/* Modern grid: 3 per row, evenly spaced */}
-            <View style={{
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              justifyContent: 'space-betweenS',
-              alignItems: 'flex-start',
-              width: '100%',
-              paddingVertical: 10,
-              gap: 0,
-            }}>
-              {quickActions.map((action, idx) => (
-                <Animated.View
-                  key={action.label}
-                  style={{
-                    width: '32%',
-                    alignItems: 'center',
-                    marginBottom: 18,
-                  }}
-                >
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    onPress={action.onPress}
-                    style={{
-                      width: 72,
-                      height: 72,
-                      borderRadius: 36,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: 8,
-                      shadowColor: action.gradientColors[1],
-                      shadowOpacity: 0.18,
-                      shadowRadius: 10,
-                      shadowOffset: { width: 0, height: 6 },
-                      elevation: 4,
-                      backgroundColor: '#fff',
-                    }}
-                  >
-                    <LinearGradient
-                      colors={action.gradientColors}
-                      start={[0.1, 0.1]}
-                      end={[0.9, 0.9]}
-                      style={{
-                        width: 72,
-                        height: 72,
-                        borderRadius: 36,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {React.cloneElement(action.icon, { size: 28 })}
-                    </LinearGradient>
-          </TouchableOpacity>
-                  <Text
-                    style={{
-                      fontWeight: 'bold',
-                      fontSize: 13,
-                      color: '#333',
-                      textAlign: 'center',
-                      letterSpacing: 0.2,
-                      maxWidth: 80,
-                      paddingHorizontal: 2,
-                    }}
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                  >
-                    {action.label}
-                  </Text>
-                </Animated.View>
-              ))}
-            </View>
-          </View>
-          {/* Franchisee Expense Submission - Large Button Below Grid */}
-          <View style={{width: '100%', alignItems: 'center', marginBottom: 24}}>
-            <Text style={{fontWeight:'bold', marginBottom: 4}}>Select Franchisee to Submit Expense:</Text>
-              <Picker
-                selectedValue={selectedFranchisee}
-              onValueChange={value => setSelectedFranchisee(value)}
-              style={{width:'100%', height: 48, borderWidth: 2, borderColor: 'green', backgroundColor: '#fff', marginBottom: 12}}
-            >
-                <Picker.Item label="Select Franchisee" value="" />
-              {users.filter(u => (u.role || '').toLowerCase() === 'franchisee').length === 0 ? (
-                <Picker.Item label="No franchisees available" value="" />
-              ) : (
-                users.filter(u => (u.role || '').toLowerCase() === 'franchisee').map(fr => (
-                  <Picker.Item key={fr.id} label={`${fr.name} (${fr.branch})`} value={fr.id.toString()} />
-                ))
-              )}
-              </Picker>
-            {/* Show branch info, total income, and last 5 transactions for selected franchisee */}
-            {/* Removed state and useEffect for selectedFranchiseeBranch, franchiseeHistory, franchiseeTotalIncome, loadingFranchiseeHistory */}
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: selectedFranchisee ? undefined : '#eee',
-                borderRadius: 32,
-                paddingVertical: 14,
-                paddingHorizontal: 28,
-                shadowColor: '#a6c1ee',
-                shadowOpacity: 0.18,
-                shadowRadius: 10,
-                shadowOffset: { width: 0, height: 6 },
-                elevation: 3,
-                opacity: selectedFranchisee ? 1 : 0.5,
-                marginLeft: 0,
-                marginRight: 0,
-                marginTop: 0,
-                marginBottom: 0,
-                minWidth: 180,
-                justifyContent: 'center',
-                background: selectedFranchisee ? undefined : '#eee',
-              }}
-              disabled={!selectedFranchisee}
-              onPress={() => {
-                const franchisee = users.find(u => u.id.toString() === selectedFranchisee);
-                navigation.navigate('IncomeExpense', {
-                  role: 'Administration', // Always pass Administration when navigating from AdministrationDashboard
-                  branch: franchisee ? franchisee.branch : '',
-                  franchiseeName: franchisee ? franchisee.name : '',
-                  franchiseeId: franchisee ? franchisee.id : '',
-                  fromAdministration: true,
-                });
-              }}
-            >
-              <LinearGradient
-                colors={selectedFranchisee ? ['#fbc2eb', '#a6c1ee'] : ['#eee', '#eee']}
-                start={[0.1, 0.1]}
-                end={[0.9, 0.9]}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  borderRadius: 32,
-                  paddingVertical: 0,
-                  paddingHorizontal: 0,
-                  width: '100%',
-                  justifyContent: 'center',
-                }}
-              >
-                <FontAwesome5 name="money-bill-wave" size={20} color="#fff" style={{marginRight: 10}} />
-                <Text style={{color:'#fff', fontWeight:'bold', fontSize: 16}}>Record Income/Expenses</Text>
-              </LinearGradient>
-          </TouchableOpacity>
-        </View>
-        {/* Branch CRUD - Only show if toggled */}
-        {showBranchCrud && <>
-          {/* Add Branch Form */}
-          <View style={styles.formSection}>
-            <Text style={styles.formTitle}>Add Branch</Text>
-            <TextInput style={styles.input} placeholder="Branch Name" value={branchName} onChangeText={setBranchName} />
-            <TextInput style={styles.input} placeholder="Branch Address" value={branchAddress} onChangeText={setBranchAddress} />
-            <TouchableOpacity style={[styles.createButton, (!branchName || !branchAddress) && { opacity: 0.5 }]} onPress={createBranch} disabled={!branchName || !branchAddress}>
-              <Text style={styles.createButtonText}>Add Branch</Text>
-            </TouchableOpacity>
-          </View>
-          {/* Branches List with Edit/Delete/Camera URL */}
-          <View style={{marginVertical: 16}}>
-            <Text style={{fontWeight: 'bold', fontSize: 16, marginBottom: 8}}>Branches:</Text>
-            {loadingBranches ? <Text>Loading...</Text> : branches.map(branch => (
-              <View key={branch.id} style={{flexDirection: 'row', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap'}}>
-                {editBranchId === branch.id ? (
-                  <>
-                    <TextInput style={[styles.input, {flex: 1, marginRight: 4}]} value={editBranchName} onChangeText={setEditBranchName} />
-                    <TextInput style={[styles.input, {flex: 1, marginRight: 4}]} value={editBranchAddress} onChangeText={setEditBranchAddress} />
-                    <TouchableOpacity style={[styles.createButton, {paddingHorizontal: 8, marginRight: 4}]} onPress={saveEditBranch}>
-                      <Text style={styles.createButtonText}>Save</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.createButton, {backgroundColor: '#ccc', paddingHorizontal: 8}]} onPress={() => setEditBranchId(null)}>
-                      <Text style={[styles.createButtonText, {color: '#333'}]}>Cancel</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <Text style={{flex: 1}}>{branch.name} - {branch.address}</Text>
-                    <TouchableOpacity style={[styles.createButton, {paddingHorizontal: 8, marginRight: 4}]} onPress={() => startEditBranch(branch)}>
-                      <Text style={styles.createButtonText}>Edit</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.createButton, {backgroundColor: '#e57373', paddingHorizontal: 8, marginRight: 4}]} onPress={() => deleteBranch(branch)}>
-                      <Text style={[styles.createButtonText, {color: '#fff'}]}>Delete</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
-            ))}
-          </View>
-        </>}
-        {/* Create User Form - Only show if toggled */}
-        {showCreateForms && <>
-          {/* Create User Form */}
-          <View style={styles.formSection}>
-            <Text style={styles.formTitle}>Create User</Text>
-            <TextInput style={styles.input} placeholder="Name" value={userName} onChangeText={setUserName} />
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={userRole}
-                style={styles.picker}
-                onValueChange={(itemValue) => setUserRole(itemValue)}>
-                <Picker.Item label="Administration" value="Administration" />
-                <Picker.Item label="Franchisee" value="Franchisee" />
-                <Picker.Item label="Teacher" value="Teacher" />
-                <Picker.Item label="Parent" value="Parent" />
-                <Picker.Item label="Tuition Teacher" value="tuition_teacher" />
-                <Picker.Item label="Tuition Student" value="tuition_student" />
-              </Picker>
-            </View>
-            <TextInput style={styles.input} placeholder="Branch" value={userBranch} onChangeText={setUserBranch} />
-            <TextInput style={styles.input} placeholder="Email" value={userEmail} onChangeText={setUserEmail} />
-            <TextInput style={styles.input} placeholder="Mobile" value={userMobile} onChangeText={setUserMobile} />
-            <TextInput style={styles.input} placeholder="Password" value={userPassword} onChangeText={setUserPassword} secureTextEntry />
-            {userRole === 'Franchisee' && (
-              <TextInput
-                style={styles.input}
-                placeholder="Franchisee Share (%)"
-                value={userShare}
-                onChangeText={setUserShare}
-                keyboardType="numeric"
-              />
-            )}
-            <TouchableOpacity style={[styles.createButton, (!userName || !userRole || !userBranch || !userEmail || !userMobile || !userPassword) && { opacity: 0.5 }]} onPress={createUser} disabled={!userName || !userRole || !userBranch || !userEmail || !userMobile || !userPassword}>
-              <Text style={styles.createButtonText}>{creatingUser ? 'Creating...' : 'Add User'}</Text>
-            </TouchableOpacity>
-          </View>
-          {/* Bulk Assign button removed - moved to AssignUser page */}
-        </>}
-        {/* Users List and Filters - Only show if toggled */}
-        {showUsers && (
-          <View style={{marginVertical: 16}}>
-            <Text style={{fontWeight: 'bold', fontSize: 16, marginBottom: 8}}>Users:</Text>
-            {/* Filters */}
-            <View style={{flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8, gap: 8}}>
-              <View style={[styles.pickerContainer, {flex: 1, minWidth: 120, marginRight: 4}]}> 
-                <Picker
-                  selectedValue={userRoleFilter}
-                  style={styles.picker}
-                  onValueChange={setUserRoleFilter}>
-                  <Picker.Item label="All Roles" value="" />
-                  <Picker.Item label="Administration" value="Administration" />
-                  <Picker.Item label="Franchisee" value="Franchisee" />
-                  <Picker.Item label="Teacher" value="Teacher" />
-                  <Picker.Item label="Parent" value="Parent" />
-                  <Picker.Item label="Tuition Teacher" value="tuition_teacher" />
-                  <Picker.Item label="Tuition Student" value="tuition_student" />
-                </Picker>
-              </View>
-              <View style={[styles.pickerContainer, {flex: 1, minWidth: 120, marginRight: 4}]}> 
-                <Picker
-                  selectedValue={userBranchFilter}
-                  style={styles.picker}
-                  onValueChange={setUserBranchFilter}>
-                  <Picker.Item label="All Branches" value="" />
-                  {branches.map(branch => (
-                    <Picker.Item key={branch.id} label={branch.name} value={branch.name} />
-                  ))}
-                </Picker>
-              </View>
-              <TextInput
-                style={[styles.input, {flex: 2, minWidth: 120}]}
-                placeholder="Search by name or email"
-                value={userSearch}
-                onChangeText={setUserSearch}
-              />
-            </View>
-            {/* Filtered User List */}
-            {loadingUsers ? <Text>Loading...</Text> : users
-                .filter(user => !userRoleFilter || (user.role && user.role.toLowerCase()) === userRoleFilter.toLowerCase())
-              .filter(user => !userBranchFilter || user.branch === userBranchFilter)
-              .filter(user => !userSearch || user.name.toLowerCase().includes(userSearch.toLowerCase()) || user.email.toLowerCase().includes(userSearch.toLowerCase()))
-              .map(user => (
-                <View key={user.id} style={{flexDirection: 'row', alignItems: 'center', marginBottom: 6}}>
-                  <Text style={{flex: 1}}>
-                    {user.name} ({user.role}) - {user.branch}
-                    {user.role === 'Teacher' || user.role === 'Staff' ? ` [${user.staff_id}]` : user.role === 'Parent' ? ` [${user.student_id}]` : ''}
-                  </Text>
-                  <TouchableOpacity style={[styles.createButton, {paddingHorizontal: 8, marginRight: 4}]} onPress={() => navigation.navigate('EditUser', { user })}>
-                    <Text style={styles.createButtonText}>Edit</Text>
-                  </TouchableOpacity>
-                  {/* Download ID Card Button */}
-                  <TouchableOpacity style={{ marginLeft: 4 }} onPress={() => handleDownloadIdCard(user.id)}>
-                    <FontAwesome5 name="id-card" size={18} color="#4F46E5" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-          </View>
-        )}
-        {/* Graph Placeholder */}
-        <View style={styles.graphSection}>
-          <Text style={styles.graphTitle}>Income/Expense Trend per Branch</Text>
-          <View style={{marginBottom: 8}}>
-            <Picker
-              selectedValue={selectedTrendBranch}
-              onValueChange={setSelectedTrendBranch}
-              style={{backgroundColor:'#f5f7fa', borderRadius:8, borderWidth:1, borderColor:'#eee'}}>
-              {branches.map(b => (
-                <Picker.Item key={b.id} label={b.name} value={b.name} />
-              ))}
-            </Picker>
-          </View>
-          {trendLoading ? (
-            <ActivityIndicator size="small" color="#009688" />
-          ) : !Array.isArray(trendData) || trendData.length === 0 || trendData.some(d => isNaN(Number(d.total_income)) || isNaN(Number(d.total_expense))) ? (
-            <View style={styles.graphPlaceholder}><Text>No valid data</Text></View>
-          ) : (
-            <LineChart
-              data={{
-                labels: trendData.map(d => d.day),
-                datasets: [
-                    incomeExpenseType === 'all' || incomeExpenseType === 'income'
-                      ? { data: trendData.map(d => Number(d.total_income)), color: () => '#4caf50', strokeWidth: 2, label: 'Income' }
-                      : null,
-                    incomeExpenseType === 'all' || incomeExpenseType === 'expense'
-                      ? { data: trendData.map(d => Number(d.total_expense)), color: () => '#e53935', strokeWidth: 2, label: 'Expense' }
-                      : null,
-                  ].filter(Boolean),
-                  legend:
-                    incomeExpenseType === 'all'
-                      ? ['Income', 'Expense']
-                      : incomeExpenseType === 'income'
-                      ? ['Income']
-                      : ['Expense'],
-              }}
-              width={Dimensions.get('window').width - 48}
-              height={180}
-              chartConfig={{
-                backgroundColor: '#fff',
-                backgroundGradientFrom: '#fff',
-                backgroundGradientTo: '#fff',
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(26, 35, 126, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(26, 35, 126, ${opacity})`,
-                style: { borderRadius: 8 },
-                propsForDots: { r: '4', strokeWidth: '2', stroke: '#FFD700' },
-              }}
-              bezier
-              style={{ borderRadius: 8 }}
-            />
-          )}
-        </View>
-        {/* Income/Expense Toggle and Filters */}
-        <View style={{marginBottom: 16}}>
-          <TouchableOpacity style={[styles.tab, {flexDirection:'row', justifyContent:'center', alignItems:'center'}]} onPress={() => setShowIncomeExpense(v => !v)}>
-            <FontAwesome5 name="chart-line" size={18} color="#1a237e" style={{marginRight: 6}} />
-            <Text>{showIncomeExpense ? 'Hide' : 'Show'} Income/Expense</Text>
-          </TouchableOpacity>
-          {showIncomeExpense && (
-            <View style={{backgroundColor:'#fff', borderRadius:12, padding:12, marginTop:8}}>
-              <View style={{flexDirection:'row', alignItems:'center', marginBottom:8}}>
-                <TouchableOpacity style={[styles.createButton, {marginRight:8, backgroundColor: filterType==='day' ? '#a084ca' : '#FFD700'}]} onPress={() => setFilterType('day')}><Text style={styles.createButtonText}>Day</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.createButton, {marginRight:8, backgroundColor: filterType==='month' ? '#a084ca' : '#FFD700'}]} onPress={() => setFilterType('month')}><Text style={styles.createButtonText}>Month</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.createButton, {backgroundColor: filterType==='range' ? '#a084ca' : '#FFD700'}]} onPress={() => setFilterType('range')}><Text style={styles.createButtonText}>Range</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.createButton, {marginLeft:'auto', backgroundColor:'#4caf50'}]} onPress={handleDownloadCSV}>
-                  <FontAwesome5 name="download" size={16} color="#fff" />
-                  <Text style={[styles.createButtonText, {color:'#fff', marginLeft:4}]}>Download CSV</Text>
-                </TouchableOpacity>
-              </View>
-              {/* Filter Pickers */}
-              {filterType === 'day' && (
-                <TouchableOpacity style={styles.dateBtn} onPress={() => setShowIncomeExpenseDatePicker(true)}>
-                  <MaterialIcons name="date-range" size={22} color="#1a237e" />
-                  <Text style={styles.dateText}>{incomeExpenseDate.toISOString().slice(0,10)}</Text>
-                </TouchableOpacity>
-              )}
-              {showIncomeExpenseDatePicker && (
-                <DateTimePicker
-                  value={incomeExpenseDate}
-                  mode="date"
-                  display="default"
-                  onChange={(e, d) => {
-                    setShowIncomeExpenseDatePicker(false);
-                    if (d) setIncomeExpenseDate(d);
-                  }}
-                />
-              )}
-              {filterType === 'month' && (
-                <View style={{flexDirection:'row', alignItems:'center', marginTop:8}}>
-                  <Picker
-                    selectedValue={incomeExpenseMonth}
-                    style={{flex:1}}
-                    onValueChange={setIncomeExpenseMonth}>
-                    {[...Array(12)].map((_,i) => (
-                      <Picker.Item key={i+1} label={`Month ${i+1}`} value={i+1} />
-                    ))}
-                  </Picker>
-                  <Picker
-                    selectedValue={incomeExpenseYear}
-                    style={{flex:1}}
-                    onValueChange={setIncomeExpenseYear}>
-                    {[...Array(5)].map((_,i) => (
-                      <Picker.Item key={i} label={`${incomeExpenseYear-2+i}`} value={incomeExpenseYear-2+i} />
-                    ))}
-                  </Picker>
-                </View>
-              )}
-              {filterType === 'range' && (
-                <View style={{flexDirection:'row', alignItems:'center', marginTop:8}}>
-                  <TouchableOpacity style={styles.dateBtn} onPress={() => setShowIncomeExpenseDatePicker('start')}>
-                    <MaterialIcons name="date-range" size={22} color="#1a237e" />
-                    <Text style={styles.dateText}>Start: {dateRange.start.toISOString().slice(0,10)}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.dateBtn} onPress={() => setShowIncomeExpenseDatePicker('end')}>
-                    <MaterialIcons name="date-range" size={22} color="#1a237e" />
-                    <Text style={styles.dateText}>End: {dateRange.end.toISOString().slice(0,10)}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-        {/* Camera View Section - Only show if toggled */}
-        {showCameras && (
-          <View style={{marginVertical: 16}}>
-            <Text style={{fontWeight: 'bold', fontSize: 18, marginBottom: 12, color: '#1a237e'}}>All Branch Cameras</Text>
-            {cameraBranches.map((branch, idx) => (
-              <View key={branch.id || idx} style={styles.cameraCard}>
-                <Text style={styles.cameraBranch}>{branch.name}</Text>
-                <WebView
-                  style={styles.cameraWebview}
-                  source={{ uri: branch.stream_url }}
-                  allowsFullscreenVideo
-                />
-                <TouchableOpacity
-                  style={styles.cameraReportButton}
-                  onPress={() => {
-                    Alert.alert('Report Issue', `Report camera issue for ${branch.name}`);
-                  }}
-                >
-                  <Text style={styles.cameraReportText}>Report Issue</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        )}
-        {/* Attendance List Section */}
-        {/* Removed Attendance List Section */}
-        {/* Assign/Update Fees Section */}
-        {/* Removed Assign/Update Fees Section */}
-        {/* Attendance List Modal */}
-        {/* Commenting out all Modal components for debugging UI hang issue */}
-        {/* <Modal
-          visible={attendanceModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setAttendanceModalVisible(false)}
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#333', marginBottom: 20 }}>
+          Administration Dashboard Test
+        </Text>
+        <Text style={{ fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 30 }}>
+          If you can see this, the dashboard is working!
+        </Text>
+        <TouchableOpacity 
+          style={{ backgroundColor: '#007AFF', padding: 15, borderRadius: 8 }}
+          onPress={() => console.log('Test button pressed')}
         >
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'center', alignItems: 'center' }}>
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 24, width: '90%', maxHeight: '80%' }}>
-              <Text style={{ fontWeight: 'bold', fontSize: 18, color: '#4b2996', marginBottom: 16, textAlign: 'center' }}>Attendance List</Text>
-              {attendanceLoading ? (
-                <ActivityIndicator size="large" color="#a084ca" />
-              ) : attendanceList.length === 0 ? (
-                <Text style={{ textAlign: 'center', color: '#888' }}>No attendance records found.</Text>
-              ) : (
-                <FlatList
-                  data={attendanceList}
-                  keyExtractor={(item, idx) => item.id ? String(item.id) : String(idx)}
-                  renderItem={({ item }) => (
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 8 }}>
-                      <View style={{ flex: 2 }}>
-                        <Text style={{ fontWeight: 'bold', color: '#4b2996' }}>{item.name || item.student_name || 'N/A'}</Text>
-                        <Text style={{ color: '#888', fontSize: 13 }}>{item.branch || 'N/A'}</Text>
-                      </View>
-                      <View style={{ flex: 3, alignItems: 'center' }}>
-                        <Text style={{ color: '#333', fontSize: 13 }}>In: {item.in_time || '-'}</Text>
-                        <Text style={{ color: '#333', fontSize: 13 }}>Out: {item.out_time || '-'}</Text>
-                        <Text style={{ color: item.status === 'present' ? '#4caf50' : item.status === 'absent' ? '#e74c3c' : '#f39c12', fontWeight: 'bold' }}>{item.status || 'N/A'}</Text>
-                      </View>
-                    </View>
-                  )}
-                  style={{ maxHeight: 350 }}
-                />
-              )}
-              <TouchableOpacity style={{ marginTop: 18, backgroundColor: '#a084ca', borderRadius: 10, paddingVertical: 10, alignItems: 'center' }} onPress={() => setAttendanceModalVisible(false)}>
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal> */}
-        {/* Timetable Management Section */}
-        <View style={{backgroundColor:'#fff', borderRadius:12, padding:16, marginVertical:16, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:10, elevation:2}}>
-          <Text style={{fontWeight:'bold', fontSize:17, marginBottom:10}}>Timetable Management</Text>
-          <View style={{flexDirection:'row', justifyContent:'center', marginBottom:12}}>
-            {daysOfWeek.map(day => (
-              <TouchableOpacity key={day} onPress={() => setSelectedTimetableDay(day)} style={{padding:8, marginHorizontal:4, borderRadius:6, backgroundColor: selectedTimetableDay===day ? '#4F46E5' : '#eee'}}>
-                <Text style={{color: selectedTimetableDay===day ? '#fff' : '#333', fontWeight:'bold'}}>{day.slice(0,3)}</Text>
-          </TouchableOpacity>
-            ))}
-          </View>
-          {loadingPeriods ? (
-            <ActivityIndicator size="small" color="#4F46E5" style={{marginVertical:16}} />
-          ) : periods.length === 0 ? (
-            <Text style={{color:'#888', textAlign:'center', marginVertical:12}}>No periods for this day.</Text>
-          ) : (
-            <View>
-              {periods.map(period => (
-                <View key={period.id} style={{backgroundColor:'#f9f9f9', borderRadius:8, padding:10, marginBottom:8, flexDirection:'row', alignItems:'center', justifyContent:'space-between'}}>
-                  <View>
-                    <Text style={{fontWeight:'bold', fontSize:15}}>{period.start} - {period.end}</Text>
-                    <Text style={{color:'#333'}}>{period.description}</Text>
-                  </View>
-                  <View style={{flexDirection:'row'}}>
-                    <TouchableOpacity onPress={() => { setEditingPeriod(period); setPeriodDesc(period.description); setPeriodTime({ start: new Date(`1970-01-01T${period.start}:00`), end: new Date(`1970-01-01T${period.end}:00`) }); setShowPeriodModal(true); }} style={{marginRight:8}}>
-                      <MaterialIcons name="edit" size={20} color="#4F46E5" />
-              </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeletePeriod(period.id)}>
-                      <MaterialIcons name="delete" size={20} color="#e53935" />
-              </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-          <TouchableOpacity onPress={() => { setEditingPeriod(null); setPeriodDesc(''); setPeriodTime({ start: new Date(), end: new Date() }); setShowPeriodModal(true); }} style={{marginTop:10, backgroundColor:'#4F46E5', borderRadius:8, padding:10, alignItems:'center'}}>
-            <Text style={{color:'#fff', fontWeight:'bold'}}>Add Period</Text>
-          </TouchableOpacity>
-          {/* Period Modal */}
-          <Modal visible={showPeriodModal} transparent animationType="slide" onRequestClose={() => setShowPeriodModal(false)}>
-            <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.3)', justifyContent:'center', alignItems:'center'}}>
-              <View style={{backgroundColor:'#fff', borderRadius:12, padding:20, width:'90%', maxWidth:400}}>
-                <Text style={{fontWeight:'bold', fontSize:16, marginBottom:10}}>{editingPeriod ? 'Edit Period' : 'Add Period'}</Text>
-                <TouchableOpacity onPress={() => setShowStartPicker(true)} style={{marginBottom:8, backgroundColor:'#eee', borderRadius:6, padding:8}}>
-                  <Text>Start Time: {periodTime.start.toTimeString().slice(0,5)}</Text>
-                </TouchableOpacity>
-                {showStartPicker && (
-                  <DateTimePicker
-                    value={periodTime.start}
-                    mode="time"
-                    is24Hour={true}
-                    display="default"
-                    onChange={(e, d) => { setShowStartPicker(false); if (d) setPeriodTime(pt => ({...pt, start: d})); }}
-                  />
-                )}
-                <TouchableOpacity onPress={() => setShowEndPicker(true)} style={{marginBottom:8, backgroundColor:'#eee', borderRadius:6, padding:8}}>
-                  <Text>End Time: {periodTime.end.toTimeString().slice(0,5)}</Text>
-                </TouchableOpacity>
-                {showEndPicker && (
-                  <DateTimePicker
-                    value={periodTime.end}
-                    mode="time"
-                    is24Hour={true}
-                    display="default"
-                    onChange={(e, d) => { setShowEndPicker(false); if (d) setPeriodTime(pt => ({...pt, end: d})); }}
-                  />
-                )}
-                <Picker
-                  selectedValue={periodDay}
-                  style={{backgroundColor:'#f9f9f9', borderRadius:6, marginBottom:10}}
-                  onValueChange={setPeriodDay}
-                >
-                  {daysOfWeek.map(day => (
-                    <Picker.Item key={day} label={day} value={day} />
-                  ))}
-                </Picker>
-                <Picker
-                  selectedValue={periodBranch}
-                  style={{backgroundColor:'#f9f9f9', borderRadius:6, marginBottom:10}}
-                  onValueChange={setPeriodBranch}
-                >
-                  <Picker.Item label="All Branches" value="ALL" />
-                  {branches.map(branch => (
-                    <Picker.Item key={branch.id} label={branch.name} value={branch.name} />
-                  ))}
-                </Picker>
-                <TextInput placeholder="Description" value={periodDesc} onChangeText={setPeriodDesc} style={{backgroundColor:'#f9f9f9', borderRadius:6, padding:8, marginBottom:10}} />
-                <View style={{flexDirection:'row', justifyContent:'flex-end'}}>
-                  <TouchableOpacity onPress={() => setShowPeriodModal(false)} style={{marginRight:12}}><Text style={{color:'#e53935'}}>Cancel</Text></TouchableOpacity>
-                  <TouchableOpacity onPress={handleSavePeriod}><Text style={{color:'#4F46E5', fontWeight:'bold'}}>{editingPeriod ? 'Save' : 'Add'}</Text></TouchableOpacity>
-              </View>
-        </View>
-            </View>
-          </Modal>
-        </View>
-        {/* Transaction History Section */}
-        {selectedTrendBranch ? (
-          <View style={{backgroundColor:'#fff', borderRadius:12, padding:16, marginVertical:16, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:10, elevation:2, minHeight:120}}>
-            <Text style={{fontWeight:'bold', fontSize:16, marginBottom:12}}>Recent Transactions ({selectedTrendBranch})</Text>
-            {loadingTransactions ? (
-              <ActivityIndicator size="small" color="#4F46E5" style={{marginTop:16}} />
-            ) : recentTransactions.length === 0 ? (
-              <Text style={{color:'#888', textAlign:'center', marginTop:16}}>No transactions found.</Text>
-            ) : (
-              <View style={{paddingBottom:8}}>
-                {recentTransactions.map(item => (
-                  <View key={item.id?.toString() || Math.random().toString()} style={{
-                    backgroundColor: '#f9f9f9',
-                    borderRadius: 8,
-                    padding: 12,
-                    marginBottom: 10,
-                    borderLeftWidth: 4,
-                    borderLeftColor: item.type === 'income' ? '#43cea2' : '#e53935',
-                    shadowColor: '#000',
-                    shadowOpacity: 0.04,
-                    shadowRadius: 4,
-                    elevation: 1,
-                  }}>
-                    <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
-                      <Text style={{fontWeight:'bold', color: item.type === 'income' ? '#43cea2' : '#e53935'}}>{item.type === 'income' ? 'Income' : 'Expense'}</Text>
-                      <Text style={{fontSize:12, color:'#888'}}>{new Date(item.date.replace(' ', 'T')).toLocaleDateString()}</Text>
-                    </View>
-                    <Text style={{fontSize:15, fontWeight:'bold', marginVertical:2}}>₹{item.amount}</Text>
-                    <Text style={{fontSize:14, color:'#333'}}>{item.description}</Text>
-                    <Text style={{fontSize:12, color:'#888', marginTop:2}}>Status: <Text style={{color: item.status === 'approved' ? '#43cea2' : item.status === 'pending' ? '#FFD700' : '#e53935', fontWeight:'bold'}}>{item.status}</Text></Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
-        ) : null}
-        {/* Button to navigate to Kids Activity Feed screen */}
-        <View style={{alignItems: 'center', marginTop: 24, marginBottom: 24}}>
-          <TouchableOpacity
-            activeOpacity={0.92}
-            onPress={() => navigation.navigate('KidsActivityFeed')}
-            style={{width: '90%', borderRadius: 16, shadowColor: '#009688', shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 6 }, elevation: 4}}
-          >
-            <LinearGradient
-              colors={['#43cea2', '#00c6ff']}
-              start={[0, 0]}
-              end={[1, 1]}
-              style={{borderRadius: 16, paddingVertical: 18, alignItems: 'center', justifyContent: 'center'}}>
-              <Text style={{color: '#fff', fontWeight: 'bold', fontSize: 20, letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.12)', textShadowOffset: {width:0, height:1}, textShadowRadius:2}}>
-                View Kids Activity Feed
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-        {/* Staff Attendance Reports Section */}
-        <View style={{backgroundColor:'#fff', borderRadius:12, padding:16, marginVertical:16, shadowColor:'#000', shadowOpacity:0.05, shadowRadius:10, elevation:2}}>
-          <Text style={{fontWeight:'bold', fontSize:17, marginBottom:10}}>Staff Attendance Reports</Text>
-          <View style={{flexDirection:'row', flexWrap:'wrap', marginBottom:12, gap:8}}>
-            <View style={{flex:1, minWidth:120, marginRight:4}}>
-              <Picker
-                selectedValue={reportBranch}
-                style={{height:40}}
-                onValueChange={setReportBranch}>
-                <Picker.Item label="All Branches" value="" />
-                {branches.map(b => (
-                  <Picker.Item key={b.id || b.name} label={b.name} value={b.name} />
-                ))}
-              </Picker>
-            </View>
-            <View style={{flex:1, minWidth:120, marginRight:4}}>
-              <Picker
-                selectedValue={reportStaff}
-                style={{height:40}}
-                onValueChange={setReportStaff}>
-                <Picker.Item label="All Staff" value="" />
-                {users.filter(u => u.role && (u.role.toLowerCase().includes('teacher') || u.role.toLowerCase().includes('staff'))).map(u => (
-                  <Picker.Item key={u.id} label={u.name} value={u.id} />
-                ))}
-              </Picker>
-            </View>
-            <TouchableOpacity onPress={() => setShowReportDatePicker(true)} style={{backgroundColor:'#f5f7fa', borderRadius:8, borderWidth:1, borderColor:'#e0e0e0', paddingHorizontal:12, justifyContent:'center', height:40}}>
-              <Text style={{color:'#333'}}>{reportDate ? reportDate : 'Select Date'}</Text>
-            </TouchableOpacity>
-            {showReportDatePicker && (
-              <DateTimePicker
-                value={reportDate ? new Date(reportDate) : new Date()}
-                mode="date"
-                display="default"
-                onChange={(e, d) => {
-                  setShowReportDatePicker(false);
-                  if (d) setReportDate(d.toISOString().slice(0,10));
-                }}
-              />
-            )}
-            <TouchableOpacity onPress={fetchStaffReports} style={{backgroundColor:'#4F46E5', borderRadius:8, paddingHorizontal:16, justifyContent:'center', height:40, marginLeft:4}}>
-              <Text style={{color:'#fff', fontWeight:'bold'}}>Filter</Text>
-            </TouchableOpacity>
-          </View>
-          {loadingReports ? <ActivityIndicator size="small" color="#4F46E5" style={{marginVertical:16}} /> : staffReports.length === 0 ? (
-            <Text style={{color:'#888', textAlign:'center', marginVertical:12}}>No reports found.</Text>
-          ) : (
-            <ScrollView horizontal style={{marginTop:8}} contentContainerStyle={{paddingBottom:8}}>
-              <View>
-                <View style={{flexDirection:'row', borderBottomWidth:1, borderColor:'#eee', paddingBottom:6, marginBottom:6}}>
-                  <Text style={{width:90, fontWeight:'bold'}}>Date</Text>
-                  <Text style={{width:120, fontWeight:'bold'}}>Staff</Text>
-                  <Text style={{width:120, fontWeight:'bold'}}>Branch</Text>
-                  <Text style={{width:80, fontWeight:'bold'}}>Clock In</Text>
-                  <Text style={{width:80, fontWeight:'bold'}}>Clock Out</Text>
-                  <Text style={{width:160, fontWeight:'bold'}}>Report</Text>
-                  <Text style={{width:80, fontWeight:'bold'}}>To</Text>
-                </View>
-                {staffReports.map(r => (
-                  <View key={r.id} style={{flexDirection:'row', borderBottomWidth:1, borderColor:'#f5f5f5', paddingVertical:6}}>
-                    <Text style={{width:90}}>{r.date}</Text>
-                    <Text style={{width:120}}>{(users.find(u => u.id == r.staff_id) || {}).name || r.staff_id}</Text>
-                    <Text style={{width:120}}>{r.branch}</Text>
-                    <Text style={{width:80}}>{r.clock_in || '-'}</Text>
-                    <Text style={{width:80}}>{r.clock_out || '-'}</Text>
-                    <Text style={{width:160}} numberOfLines={2} ellipsizeMode="tail">{r.report || '-'}</Text>
-                    <Text style={{width:80}}>{r.submitted_to || '-'}</Text>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          )}
-        </View>
-        {/* 4. Add Master Settings Modal JSX at the end of the main render */}
-        <Modal visible={showMasterSettings} transparent animationType="slide" onRequestClose={() => setShowMasterSettings(false)}>
-          <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.3)', justifyContent:'center', alignItems:'center'}}>
-            <View style={{backgroundColor:'#fff', borderRadius:12, padding:20, width:'90%', maxWidth:400}}>
-              <Text style={{fontWeight:'bold', fontSize:18, marginBottom:10}}>Upload New App Version</Text>
-              <TextInput placeholder="Title" value={newVersionTitle} onChangeText={setNewVersionTitle} style={{backgroundColor:'#f9f9f9', borderRadius:6, padding:8, marginBottom:10}} />
-              <TextInput placeholder="Version (e.g. 1.2.3)" value={newVersionNumber} onChangeText={setNewVersionNumber} style={{backgroundColor:'#f9f9f9', borderRadius:6, padding:8, marginBottom:10}} />
-              <TextInput placeholder="Short Description" value={newVersionDescription} onChangeText={setNewVersionDescription} style={{backgroundColor:'#f9f9f9', borderRadius:6, padding:8, marginBottom:10}} />
-              <TextInput placeholder="What's New / Changelog" value={newVersionChangelog} onChangeText={setNewVersionChangelog} multiline style={{backgroundColor:'#f9f9f9', borderRadius:6, padding:8, marginBottom:10, minHeight:60}} />
-              {/* File upload logic would go here (custom or with expo-document-picker) */}
-              <TouchableOpacity style={{backgroundColor:'#eee', borderRadius:6, padding:10, alignItems:'center', marginBottom:10}} onPress={handlePickFile}>
-                <Text style={{color:'#333'}}>{newVersionFile ? newVersionFile.name : 'Select APK/AAB File'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{backgroundColor: uploading ? '#ccc' : '#4caf50', borderRadius:6, padding:10, alignItems:'center', marginBottom:10}}
-                onPress={handleUploadVersion}
-                disabled={uploading}
-              >
-                <Text style={{color:'#fff', fontWeight:'bold'}}>{uploading ? 'Uploading...' : 'Upload'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setShowMasterSettings(false)} style={{alignItems:'center'}}>
-                <Text style={{color:'#e53935'}}>Cancel</Text>
-              </TouchableOpacity>
-              <View style={{marginTop: 20}}>
-                <Text style={{fontWeight:'bold', fontSize:16, marginBottom:8}}>Uploaded App Files</Text>
-                {appFiles.length === 0 ? (
-                  <Text style={{color:'#888'}}>No files uploaded yet.</Text>
-                ) : (
-                  appFiles.map(file => (
-                    <View key={file.name} style={{flexDirection:'row', alignItems:'center', marginBottom:8, justifyContent:'space-between'}}>
-                      <Text style={{flex:1}}>{file.name} ({(file.size/1024/1024).toFixed(2)} MB)</Text>
-                      <TouchableOpacity style={{backgroundColor:'#e57373', borderRadius:6, padding:6, marginRight:6}} onPress={() => handleDeleteAppFile(file)}>
-                        <Text style={{color:'#fff'}}>Delete</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={{backgroundColor:'#4caf50', borderRadius:6, padding:6}} onPress={() => handlePushForDownload(file)}>
-                        <Text style={{color:'#fff'}}>Push for Download</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))
-                )}
-                {/* Bulk Assign button removed - moved to AssignUser page */}
-              </View>
-            </View>
-          </View>
-        </Modal>
-        {/* 5. Add a banner at the top of the main content if newVersionAvailable is true */}
-        {newVersionAvailable && latestVersionInfo && (
-          <View style={{backgroundColor:'#FFD700', padding:10, alignItems:'center', flexDirection:'row', justifyContent:'space-between'}}>
-            <View style={{flex:1}}>
-              <Text style={{fontWeight:'bold', color:'#1a237e'}}>New Version Available: {latestVersionInfo.version}</Text>
-              <Text style={{color:'#1a237e'}}>{latestVersionInfo.description}</Text>
-            </View>
-            <TouchableOpacity style={{backgroundColor:'#4caf50', borderRadius:6, padding:8, marginLeft:10}} onPress={() => {/* handle install logic here */}}>
-              <Text style={{color:'#fff', fontWeight:'bold'}}>Install</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
+          <Text style={{ color: '#fff', fontSize: 16 }}>Test Button</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -2104,7 +1402,7 @@ const styles = StyleSheet.create({
     color: '#1a237e',
     fontSize: 16,
   },
-  alertItem: {
+  alertItemText: {
     color: '#1a237e',
     marginBottom: 2,
     fontSize: 15,
