@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "tn-happy-kids",
+    "slug": "tn-happy-kids",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f3e8ff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dineshwebdev.tnhappykids",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#f3e8ff"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "package": "com.dineshwebdev.tnhappykids"
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c49b9e47-f512-4647-82db-1171b0ceda64"
+      }
+    },
+    "plugins": [],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c49b9e47-f512-4647-82db-1171b0ceda64"
+    }
+  }
+}

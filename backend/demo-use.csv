@@ -1,0 +1,4 @@
+name,childName,email,mobile,branch,password,role
+, Aarush, aarush@pollachi.tnhappykids.in, 1234567890, Pollachi, pass123, Parent
+, Abijith, abijith@pollachi.tnhappykids.in, 9876543210, Pollachi, pass456, Parent
+Jane Smith, , janesmith@pollachi.tnhappykids.in, 9988776655, Pollachi, pass321, Teacher 
