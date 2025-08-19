@@ -1656,18 +1656,6 @@ export default function AdministrationDashboard() {
         <BlurView intensity={40} tint="light" style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Expense</Text>
-            <Picker
-              selectedValue={expenseFranchisee}
-              style={styles.pickerStyle}
-              onValueChange={(itemValue) => setExpenseFranchisee(itemValue)}
-            >
-              <Picker.Item label="Select Franchisee..." value="" />
-              {users.filter(u => u.role === 'Franchisee').map(fr => (
-                <Picker.Item key={fr.id} label={`${fr.name} (${fr.branch})`} value={fr.branch} />
-              ))}
-            </Picker>
-            <TextInput
-              placeholder="Amount"
               value={expenseAmount}
               onChangeText={setExpenseAmount}
               style={styles.inputStyle}
